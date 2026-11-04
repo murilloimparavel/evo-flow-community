@@ -1,5 +1,11 @@
 import { AssignAgentNode } from './assign-agent.node';
 
+// This unit verifies context rejection before any CRM call. Avoid constructing
+// a real network client (and requiring a production service token).
+jest.mock('src/shared/crm-client/crm-client.service', () => ({
+  CrmClientService: jest.fn(),
+}));
+
 describe('AssignAgentNode', () => {
   it('EVO-1741: skips with a visible failure when the trigger provides no conversation', async () => {
     const node = new AssignAgentNode();

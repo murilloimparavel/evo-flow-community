@@ -78,24 +78,26 @@ export class CircuitBreaker extends EventEmitter {
       }
     }
 
-    // Execute operation with timeout
+    // Always release the watchdog when the operation settles. An abandoned
+    // timeout otherwise retains the event loop (and request resources) for
+    // up to five minutes even after an operation has already succeeded.
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
     try {
-      const result = await Promise.race([operation(), this.timeoutPromise()]);
+      const timeout = new Promise<never>((_, reject) => {
+        watchdog = setTimeout(() => {
+          reject(new Error(`Operation timeout after ${this.config.timeout}ms`));
+        }, this.config.timeout);
+      });
+      const result = await Promise.race([operation(), timeout]);
 
       this.onSuccess();
       return result as T;
     } catch (error) {
       this.onFailure(error);
       throw error;
+    } finally {
+      if (watchdog !== undefined) clearTimeout(watchdog);
     }
-  }
-
-  private timeoutPromise<T>(): Promise<T> {
-    return new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Operation timeout after ${this.config.timeout}ms`));
-      }, this.config.timeout);
-    });
   }
 
   private onSuccess(): void {
