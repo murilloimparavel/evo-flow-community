@@ -95,7 +95,10 @@ describe('CampaignsController critical execution flows', () => {
     const { controller, campaignsService } = buildController();
 
     const result = await controller.stop(campaignId);
-    expect(campaignsService.stop).toHaveBeenCalledWith(campaignId, accountId);
+    // The single-account service resolves its own database context; stop's
+    // public signature now takes only the campaign identifier.
+    expect(campaignsService.stop).toHaveBeenCalledTimes(1);
+    expect(campaignsService.stop).toHaveBeenCalledWith(campaignId);
     expect(result).toEqual({ id: campaignId, status: 'stopped' });
   });
 });
